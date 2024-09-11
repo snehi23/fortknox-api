@@ -5,27 +5,17 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
+	"fortknox-api/service"
 )
 
-var authorityMap map[string]bool
-
 func main() {
-	authorityMap = make(map[string]bool)
-	hydrateAuthorityMap(authorityMap)
 	route := mux.NewRouter()
 	// Base Path
 	s := route.PathPrefix("/fortknox").Subrouter()
 	// Routes
-	s.HandleFunc("/createToken", createToken).Methods("POST")
-	s.HandleFunc("/redeemToken", redeemToken).Methods("GET")
+	s.HandleFunc("/createToken", service.CreateToken).Methods("POST")
+	s.HandleFunc("/redeemToken", service.RedeemToken).Methods("GET")
 	// Run Server
 	log.Fatal(http.ListenAndServe(":8080", s))
-}
-
-func hydrateAuthorityMap(authorityMap map[string]bool) {
-
-	authorityMap["Employee"] = true
-	authorityMap["Name"] = true
-	authorityMap["Credit_Card"] = true
-	authorityMap["Address"] = true
 }
