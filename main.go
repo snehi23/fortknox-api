@@ -16,6 +16,7 @@ func main() {
 	// Routes
 	s.HandleFunc("/createToken", service.CreateToken).Methods("POST")
 	s.HandleFunc("/redeemToken", service.RedeemToken).Methods("GET")
+	log.Printf("Server is running on http://localhost:8080")
 	// Run Server
 	log.Fatal(http.ListenAndServe(":8080", s))
 }

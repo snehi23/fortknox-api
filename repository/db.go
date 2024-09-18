@@ -4,11 +4,16 @@ import (
 	"context"
 	"log"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"fortknox-api/model"
 )
 
 const uri = "mongodb://127.0.0.1:27017"
+
+var collection = GetMongoCollection()
 
 func ConnectToDB() *mongo.Client {
 	// Use the SetServerAPIOptions() method to set the Stable API version to 1
@@ -26,4 +31,18 @@ func ConnectToDB() *mongo.Client {
 	}
 	log.Println("Pinged your datastore. You have successfully connected to MongoDB!")
 	return client
+}
+
+func GetMongoCollection() *mongo.Collection {
+	return ConnectToDB().Database("fortknox-db").Collection("tokenStore")
+}
+
+func FindBy(filter bson.D, c chan func() (model.MongoDBTokenStoreDocument, error)) {
+	// annonymous function made to return 2 values to channel
+	c <- (func() (model.MongoDBTokenStoreDocument, error) {
+		var result model.MongoDBTokenStoreDocument
+		err := collection.FindOne(context.TODO(), filter).Decode(&result)
+		log.Println("Processed from dataStore Channel")
+		return result, err
+	})
 }

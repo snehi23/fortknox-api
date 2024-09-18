@@ -9,10 +9,10 @@ import (
 	"github.com/patrickmn/go-cache"
 	"go.mongodb.org/mongo-driver/bson"
 
-	"fortknox-api/repository"
 	"fortknox-api/caches"
 	"fortknox-api/common"
 	"fortknox-api/model"
+	"fortknox-api/repository"
 )
 
 var collection = repository.ConnectToDB().Database("fortknox-db").Collection("tokenStore")
@@ -24,11 +24,11 @@ func CreateToken(response http.ResponseWriter, request *http.Request) {
 	var tokenRequest model.TokenRequest
 	var tokenResponse model.TokenResponse
 
-	error := json.NewDecoder(request.Body).Decode(&tokenRequest)
+	decoderError := json.NewDecoder(request.Body).Decode(&tokenRequest)
 
-	if error != nil {
+	if decoderError != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		log.Fatalf("Something is wrong while decoding the request. Please try again later. error: %v sde: %v", error, tokenRequest)
+		log.Fatalf("Something is wrong while decoding the request. Please try again later. error: %v sde: %v", decoderError, tokenRequest)
 	}
 
 	_, ok := authorityMap[tokenRequest.Authority]
@@ -52,9 +52,13 @@ func CreateToken(response http.ResponseWriter, request *http.Request) {
 		tokenResponse.Token = token.(string)
 		// if not found, search in DB
 	} else {
-		var result model.MongoDBTokenStoreDocument
-		filter := bson.D{{Key: "sde", Value: tokenRequest.Sde}}
-		err := collection.FindOne(context.TODO(), filter).Decode(&result)
+
+		// create new go channel for data store activity
+		dataStoreChan := make(chan func() (model.MongoDBTokenStoreDocument, error))
+		// call go routine
+		go repository.FindBy(bson.D{{Key: "sde", Value: tokenRequest.Sde}}, dataStoreChan)
+		// capture results from go channel
+		result, err := (<-dataStoreChan)()
 
 		// if found, write to cache and return
 		if err == nil {
@@ -92,11 +96,11 @@ func RedeemToken(response http.ResponseWriter, request *http.Request) {
 	var redeemRequest model.RedeemRequest
 	var redeemResponse model.RedeemResponse
 
-	error := json.NewDecoder(request.Body).Decode(&redeemRequest)
+	decoderError := json.NewDecoder(request.Body).Decode(&redeemRequest)
 
-	if error != nil {
+	if decoderError != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		log.Fatalf("Somthing is wrong. Please try again later. error: %v token: %v", error, redeemRequest)
+		log.Fatalf("Somthing is wrong. Please try again later. error: %v token: %v", decoderError, redeemRequest)
 	}
 
 	_, ok := authorityMap[redeemRequest.Authority]
@@ -119,9 +123,13 @@ func RedeemToken(response http.ResponseWriter, request *http.Request) {
 		// if not found then search in DB
 	} else {
 
-		var result model.MongoDBTokenStoreDocument
+		// create new go channel for data store activity
+		dataStoreChan := make(chan func() (model.MongoDBTokenStoreDocument, error))
 		filter := bson.D{{Key: "token", Value: redeemRequest.Token}}
-		err := collection.FindOne(context.TODO(), filter).Decode(&result)
+		// call go routine
+		go repository.FindBy(filter, dataStoreChan)
+		// capture results from go channel
+		result, err := (<-dataStoreChan)()
 
 		// if found, write to cache and return
 		if err == nil {
