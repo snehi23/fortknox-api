@@ -21,6 +21,13 @@ var authorityMap = common.HydrateAuthorityMap()
 
 func CreateToken(response http.ResponseWriter, request *http.Request) {
 
+	if !common.IsValidAPIKey(request) {
+		log.Printf("Unauthorized request")
+		response.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(response).Encode("Unauthorized Request")
+		return
+	}
+
 	var tokenRequest model.TokenRequest
 	var tokenResponse model.TokenResponse
 
@@ -92,6 +99,13 @@ func CreateToken(response http.ResponseWriter, request *http.Request) {
 }
 
 func RedeemToken(response http.ResponseWriter, request *http.Request) {
+
+	if !common.IsValidAPIKey(request) {
+		log.Printf("Unauthorized request")
+		response.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(response).Encode("Unauthorized Request")
+		return
+	}
 
 	var redeemRequest model.RedeemRequest
 	var redeemResponse model.RedeemResponse
